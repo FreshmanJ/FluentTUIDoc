@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluentTUI 中英文档</title>
+    <style>
+        /* 新增搜索框样式 */
+        .search-container {
+            margin-bottom: 25px;
+            position: fixed;
+            right: 20px;
+            width:30vw;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .search-result-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .search-result-item:hover {
+            background-color: #f5f7fa;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .highlight {
+            background-color: #fffacd;
+            font-weight: bold;
+            padding: 0 2px;
+        }
+
+        .search-meta {
+            font-size: 13px;
+            color: #666;
+            margin-top: 3px;
+        }
+        :root {
+            --sidebar-width: 280px;
+            --primary-color: #5470c6;
+            --border-color: #eaecef;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #24292e;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* 侧边栏样式 */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: #fafbfc;
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            height: 100vh;
+            position: fixed;
+            padding: 20px 0;
+        }
+        
+        .sidebar-header {
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 15px;
+        }
+        
+        .tree-item {
+            padding: 8px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .tree-item:hover {
+            background: #ebf5ff;
+        }
+        
+        .tree-item.active {
+            background: #e6f7ff;
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        .tree-children {
+            padding-left: 20px;
+            display: none;
+        }
+        
+        .tree-children.expanded {
+            display: block;
+        }
+        
+        .toggle-icon {
+            display: inline-block;
+            width: 16px;
+            text-align: center;
+            margin-right: 5px;
+            font-weight: bold;
+        }
+        
+        /* 主内容区样式 */
+        .content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            max-width: 900px;
+            position: relative; /* 新增 */
+        }
+        
+        .content-header {
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin: 25px 0 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h3 {
+            font-size: 1.4rem;
+            margin: 20px 0 10px;
+        }
+        
+        .description {
+            background: #f6f8fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-size: 15px;
+        }
+        
+        .children-content {
+            margin-left: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+            }
+            
+            .content {
+                margin-left: 0;
+            }
+            
+            body {
+                flex-direction: column;
+            }
+        }
+
+         /* 新增高亮样式 */
+        .search-highlight {
+            background-color: #fffacd !important;
+            box-shadow: 0 0 0 2px #ffeb3b;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <!-- 侧边导航树 -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>Fluent TUI<br>中英文档</h2>
+        </div>
+        <div id="tree-container"></div>
+    </div>
+    
+    <!-- 主内容区 -->
+    <div class="content" id="content">
+        <!-- 新增搜索框 -->
+        <div class="search-container">
+            <input type="text"
+                   class="search-box"
+                   id="search-input"
+                   placeholder="搜索文档内容...">
+            <div class="search-results" id="search-results"></div>
+        </div>
+
+        <div class="content-header">
+            <h1 id="title">加载中...</h1>
+            <div id="description" class="description"></div>
+        </div>
+        <div id="sections-container"></div>
+    </div>
+
+    <script>
+        // 全局状态管理
+        const state = {
+            currentItem: null,
+            expandedItems: new Set(),
+            searchIndex: [],  // 新增：搜索索引
+            scrollSyncEnabled: true,  // 新增：滚动同步开关
+            scrollTimeout: null      // 新增：滚动事件节流
+        };
+        
+        // DOM加载完成后执行
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            setupEventListeners();
+        });
+        
+        // 加载JSON数据
+        function loadData() {
+            fetch('datameshing.json')
+                .then(response => response.json())
+                .then(data => renderDocumentation(data))
+                .catch(error => console.error('加载数据失败:', error));
+        }
+        
+        // 渲染整个文档
+        function renderDocumentation(data) {
+            renderTitle(data);
+            buildSearchIndex(data);  // 新增：构建搜索索引
+            renderTree(data);
+            renderSections(data);
+            setupSearch();  // 新增：设置搜索事件监听
+        }
+
+        // 新增：构建搜索索引
+        function buildSearchIndex(data) {
+            state.searchIndex = [];
+
+            // 添加标题
+            state.searchIndex.push({
+                id: 'title',
+                text: `${data.titleTs} ${data.title}`,
+                elementId: 'title',
+                type: '标题'
+            });
+
+            // 添加描述
+            state.searchIndex.push({
+                id: 'description',
+                text: data.desTs,
+                elementId: 'description',
+                type: '描述'
+            });
+
+            // 添加列表项
+            data.list.forEach((listItem, index) => {
+                const itemId = `list-${index}`;
+
+                state.searchIndex.push({
+                    id: itemId,
+                    text: listItem.code,
+                    elementId: itemId,
+                    type: '主分类'
+                });
+
+                state.searchIndex.push({
+                    id: `${itemId}-des`,
+                    text: listItem.des,
+                    elementId: itemId,
+                    type: '描述'
+                });
+
+                state.searchIndex.push({
+                    id: `${itemId}-desTs`,
+                    text: listItem.desTs,
+                    elementId: itemId,
+                    type: '描述'
+                });
+
+                // 添加内容项
+                listItem.contents.forEach((content, contentIndex) => {
+                    const contentId = `${itemId}-content-${contentIndex}`;
+
+                    state.searchIndex.push({
+                        id: contentId,
+                        text: content.command,
+                        elementId: contentId,
+                        type: '子分类'
+                    });
+
+                    state.searchIndex.push({
+                        id: `${contentId}-des`,
+                        text: content.des,
+                        elementId: contentId,
+                        type: '描述'
+                    });
+
+                    state.searchIndex.push({
+                        id: `${contentId}-desTs`,
+                        text: content.desTs,
+                        elementId: contentId,
+                        type: '描述'
+                    });
+
+                    // 添加子项
+                    content.children.forEach((child, childIndex) => {
+                        const childId = `${contentId}-child-${childIndex}`;
+
+                        state.searchIndex.push({
+                            id: childId,
+                            text: child.command,
+                            elementId: childId,
+                            type: '命令'
+                        });
+
+                        state.searchIndex.push({
+                            id: `${childId}-des`,
+                            text: child.des,
+                            elementId: childId,
+                            type: '描述'
+                        });
+
+                        state.searchIndex.push({
+                            id: `${childId}-desTs`,
+                            text: child.desTs,
+                            elementId: childId,
+                            type: '描述'
+                        });
+                    });
+                });
+            });
+        }
+
+        // 新增：设置搜索事件监听
+        function setupSearch() {
+            const searchInput = document.getElementById('search-input');
+            const searchResults = document.getElementById('search-results');
+
+            // 输入事件
+            searchInput.addEventListener('input', function() {
+                const query = this.value.trim();
+
+                if (query.length === 0) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+
+                const results = performSearch(query);
+                displaySearchResults(results);
+            });
+
+            // 点击搜索框事件，如果input有内容则展示搜索结果
+            searchInput.addEventListener('click', function() {
+                const query = this.value.trim();
+
+                if (query.length === 0) {
+                    return;
+                }
+
+                const results = performSearch(query);
+                displaySearchResults(results);
+            })
+
+
+            // 点击外部关闭搜索结果
+            document.addEventListener('click', function(e) {
+                if (!searchResults.contains(e.target) && e.target !== searchInput) {
+                    searchResults.style.display = 'none';
+                }
+            });
+        }
+
+        // 新增：执行搜索
+        function performSearch(query) {
+            const results = [];
+            const lowerQuery = query.toLowerCase();
+
+            state.searchIndex.forEach(item => {
+                const index = item.text.toLowerCase().indexOf(lowerQuery);
+
+                if (index !== -1) {
+                    // 创建高亮文本
+                    const highlightedText = highlightMatch(item.text, query);
+
+                    results.push({
+                        id: item.id,
+                        elementId: item.elementId,
+                        text: highlightedText,
+                        type: item.type,
+                        originalText: item.text
+                    });
+                }
+            });
+
+            return results;
+        }
+
+        // 新增：高亮匹配文本
+        function highlightMatch(text, query) {
+            const lowerText = text.toLowerCase();
+            const lowerQuery = query.toLowerCase();
+            const startIndex = lowerText.indexOf(lowerQuery);
+
+            if (startIndex === -1) return text;
+
+            const endIndex = startIndex + query.length;
+            const before = text.substring(0, startIndex);
+            const match = text.substring(startIndex, endIndex);
+            const after = text.substring(endIndex);
+
+            return `${before}<span class="highlight">${match}</span>${after}`;
+        }
+
+        // 新增：显示搜索结果
+        function displaySearchResults(results) {
+            const searchResults = document.getElementById('search-results');
+
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="search-result-item">未找到匹配项</div>';
+                searchResults.style.display = 'block';
+                return;
+            }
+
+            let resultsHTML = '';
+
+            results.forEach(result => {
+                resultsHTML += `
+                    <div class="search-result-item" data-id="${result.elementId}">
+                        <div>${result.text}</div>
+                        <div class="search-meta">${result.type}</div>
+                    </div>
+                `;
+            });
+
+            searchResults.innerHTML = resultsHTML;
+            searchResults.style.display = 'block';
+
+            // 添加搜索结果点击事件
+            document.querySelectorAll('.search-result-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    var elementId = this.getAttribute('data-id');
+                    console.log(elementId);
+
+                    scrollToElement(elementId);
+
+                    // 高亮显示匹配元素
+                    highlightElement(elementId);
+
+                    // 关闭搜索结果
+                    searchResults.style.display = 'none';
+                });
+            });
+        }
+
+        // 新增：滚动到元素
+        function scrollToElement(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                console.log('滚动到元素：', elementId);
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // 新增：高亮元素
+        function highlightElement(elementId) {
+            // 移除之前的高亮
+            document.querySelectorAll('.search-highlight').forEach(el => {
+                el.classList.remove('search-highlight');
+            });
+
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.add('search-highlight');
+
+                // 5秒后移除高亮
+                setTimeout(() => {
+                    element.classList.remove('search-highlight');
+                }, 5000);
+            }
+        }
+        
+        // 渲染标题和描述
+        function renderTitle(data) {
+            document.getElementById('title').textContent = `${data.titleTs} ${data.title}`;
+            document.getElementById('description').textContent = data.desTs;
+        }
+        
+        // 渲染导航树
+        function renderTree(data) {
+            const treeContainer = document.getElementById('tree-container');
+            let treeHTML = '';
+            
+            // 添加根节点
+            treeHTML += `
+                <div class="tree-item active" data-id="root">
+                    <span class="toggle-icon">▼</span> ${data.title}
+                </div>
+                <div class="tree-children expanded">`;
+            
+            // 添加列表项
+            data.list.forEach((listItem, index) => {
+                const itemId = `list-${index}`;
+                treeHTML += `
+                    <div class="tree-item" data-id="${itemId}">
+                        <span class="toggle-icon">▸</span> ${listItem.code}
+                    </div>
+                    <div class="tree-children">`;
+                
+                // 添加内容项
+                listItem.contents.forEach((content, contentIndex) => {
+                    const contentId = `${itemId}-content-${contentIndex}`;
+                    treeHTML += `
+                        <div class="tree-item" data-id="${contentId}">
+                            <span class="toggle-icon">▸</span> ${content.command}
+                        </div>
+                        <div class="tree-children">`;
+                    
+                    // 添加子项
+                    content.children.forEach((child, childIndex) => {
+                        const childId = `${contentId}-child-${childIndex}`;
+                        treeHTML += `
+                            <div class="tree-item" data-id="${childId}">
+                                ${child.command}
+                            </div>`;
+                    });
+                    
+                    treeHTML += `</div>`; // 关闭子项容器
+                });
+                
+                treeHTML += `</div>`; // 关闭内容项容器
+            });
+            
+            treeHTML += `</div>`; // 关闭列表项容器
+            treeContainer.innerHTML = treeHTML;
+        }
+        
+        // 渲染内容区域
+        function renderSections(data) {
+            const sectionsContainer = document.getElementById('sections-container');
+            let sectionsHTML = '';
+            
+            data.list.forEach((listItem, index) => {
+                sectionsHTML += `
+                    <div class="section" id="list-${index}">
+                        <h2>${listItem.code}</h2>
+                        <div class="description">
+                            <p>${listItem.des}</p>
+                            <p>${listItem.desTs}</p>
+                        </div>`;
+                
+                listItem.contents.forEach((content, contentIndex) => {
+                    sectionsHTML += `
+                        <div class="content-item" id="list-${index}-content-${contentIndex}">
+                            <h3>${content.command}</h3>
+                            <div class="description">
+                                <p>${content.des}</p>
+                                <p>${content.desTs}</p>
+                            </div>`;
+                    
+                    // 渲染子项
+                    if (content.children.length > 0) {
+                        const contentId = `list-${index}-content-${contentIndex}`;
+                        sectionsHTML += `<div class="children-content">`;
+                        content.children.forEach((child, childIndex) => {
+                            const childId = `${contentId}-child-${childIndex}`;
+                            sectionsHTML += `
+                                <div class="child-item" id="${childId}">
+                                    <h4>${child.command}</h4>
+                                    <div class="description">
+                                        <p>${child.des}</p>
+                                        <p>${child.desTs}</p>
+                                    </div>
+                                </div>`;
+                        });
+                        sectionsHTML += `</div>`; // 关闭子项容器
+                    }
+                    
+                    sectionsHTML += `</div>`; // 关闭内容项
+                });
+                
+                sectionsHTML += `</div>`; // 关闭section
+            });
+            
+            sectionsContainer.innerHTML = sectionsHTML;
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 树节点点击事件
+            document.getElementById('sidebar').addEventListener('click', (e) => {
+                const treeItem = e.target.closest('.tree-item');
+                if (!treeItem) return;
+
+                var itemId = treeItem.dataset.id;
+
+
+                const toggleIcon = treeItem.querySelector('.toggle-icon');
+
+                // 处理展开/折叠
+                if (toggleIcon) {
+                    const childrenContainer = treeItem.nextElementSibling;
+                    if (childrenContainer.classList.contains('tree-children')) {
+                        childrenContainer.classList.toggle('expanded');
+                        toggleIcon.textContent = childrenContainer.classList.contains('expanded') ? '▼' : '▸';
+                    }
+                }
+
+                // 设置活动项
+                document.querySelectorAll('.tree-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                treeItem.classList.add('active');
+                // 滚动到对应内容
+                state.scrollSyncEnabled = false; // 临时禁用滚动同步
+                scrollToElement(itemId);
+
+                // 1秒后重新启用滚动同步
+                setTimeout(() => {
+                    state.scrollSyncEnabled = true;
+                }, 1000);
+            });
+
+            document.getElementById('content').addEventListener('scroll', handleScroll);
+        }
+        // 新增：处理滚动事件
+        function handleScroll() {
+            if (!state.scrollSyncEnabled) return;
+
+            // 使用节流避免频繁触发
+            clearTimeout(state.scrollTimeout);
+            state.scrollTimeout = setTimeout(updateActiveSection, 100);
+        }
+
+        // 新增：更新活动区域
+        function updateActiveSection() {
+            const sections = document.querySelectorAll('.section, .content-item, .child-item');
+            const contentArea = document.getElementById('content');
+            const scrollTop = contentArea.scrollTop;
+            const viewportHeight = contentArea.clientHeight;
+
+            let closestSection = null;
+            let closestDistance = Infinity;
+
+            // 找到距离视口顶部最近的区域
+            sections.forEach(section => {
+                const rect = section.getBoundingClientRect();
+                const distance = Math.abs(rect.top);
+
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestSection = section;
+                }
+            });
+
+            if (closestSection) {
+                const sectionId = closestSection.id;
+                updateTreeFocus(sectionId);
+            }
+        }
+
+        // 新增：更新树状导航焦点
+        function updateTreeFocus(sectionId) {
+            // 移除所有活动项
+            document.querySelectorAll('.tree-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // 找到对应的树状项
+            const treeItem = document.querySelector(`.tree-item[data-id="${sectionId}"]`);
+            if (treeItem) {
+                treeItem.classList.add('active');
+
+                // 确保所有父项展开
+                expandParents(treeItem);
+
+                // 滚动到活动项
+                if (state.scrollSyncEnabled) {
+                    const sidebar = document.getElementById('sidebar');
+                    const itemTop = treeItem.offsetTop;
+                    const itemHeight = treeItem.offsetHeight;
+                    const sidebarHeight = sidebar.clientHeight;
+
+                    // 计算滚动位置使活动项居中
+                    const scrollTo = itemTop - (sidebarHeight / 2) + (itemHeight / 2);
+                    sidebar.scrollTo({
+                        top: scrollTo,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }
+
+        // 新增：展开所有父项
+        function expandParents(treeItem) {
+            let current = treeItem;
+
+            while (current) {
+                // 检查是否为可展开项
+                const toggleIcon = current.querySelector('.toggle-icon');
+                if (toggleIcon) {
+                    const childrenContainer = current.nextElementSibling;
+                    if (childrenContainer && childrenContainer.classList.contains('tree-children')) {
+                        // 如果未展开则展开
+                        if (!childrenContainer.classList.contains('expanded')) {
+                            childrenContainer.classList.add('expanded');
+                            toggleIcon.textContent = '▼';
+                        }
+                    }
+                }
+
+                // 向上遍历
+                current = current.parentElement.closest('.tree-children')?.previousElementSibling;
+            }
+        }
+    </script>
+</body>
+</html>
